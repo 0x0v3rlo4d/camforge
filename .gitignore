@@ -1,0 +1,70 @@
+# --- Build files ---
+/build/
+/out/
+/bin/
+/dist/
+
+# --- CMake cache and generated files ---
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# --- Compiled binaries ---
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.pdb
+
+# --- Dependency builds (optional) ---
+/third_party/
+
+# --- Dependency builds (optional) ---
+third_party/*/build/
+third_party/*/bin/
+third_party/*/lib/
+third_party/*/dist/
+third_party/*/install/
+
+# --- OpenCV generated files ---
+third_party/opencv/build/
+third_party/opencv/bin/
+third_party/opencv/install/
+
+# --- VSCode ---
+.vscode/
+
+# --- JetBrains IDEs (CLion etc.) ---
+.idea/
+*.iml
+
+# --- macOS ---
+.DS_Store
+
+# --- Windows ---
+Thumbs.db
+desktop.ini
+
+# --- Logs & temp ---
+*.log
+*.tmp
+*.cache
+*.bak
+*.swp
+
+# --- Python virtual envs or tooling ---
+.venv/
+__pycache__/
+
+# --- Node/Electron tooling (future GUI) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
