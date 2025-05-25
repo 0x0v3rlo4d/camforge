@@ -54,15 +54,22 @@ set_target_properties(camforge PROPERTIES
 )
 
 
-# --- Platform-specific setup ---
+# --- Platform-specific setup with smart GLEW detection ---
 if (WIN32)
-    # Link against OpenGL and static GLFW/GLEW on Windows
+    # Windows: Use vendored static libraries
+    target_link_directories(camforge PRIVATE
+        "${THIRD_PARTY_DIR}/glew/lib/Release/x64"
+        "${THIRD_PARTY_DIR}/glfw/build/src/Release"
+    )
+    
     target_link_libraries(camforge
         ${OpenCV_LIBS}
         opengl32
         glfw3
-        glew32
+        glew32s
     )
+    
+    target_compile_definitions(camforge PRIVATE GLEW_STATIC)
 
     # Copy OpenCV DLLs to output folder
     add_custom_command(TARGET camforge POST_BUILD
@@ -70,28 +77,65 @@ if (WIN32)
         "${OpenCV_DIR}/../bin"
         $<TARGET_FILE_DIR:camforge>
     )
+
 elseif(APPLE)
+    # macOS: Use system frameworks + vendored libs
     find_library(COCOA_LIBRARY Cocoa REQUIRED)
     find_library(OpenGL_LIBRARY OpenGL REQUIRED)
     find_library(IOKIT_LIBRARY IOKit REQUIRED)
     find_library(COREVIDEO_LIBRARY CoreVideo REQUIRED)
 
+    # Try to find system GLEW first
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(GLEW QUIET glew)
+    endif()
+    
+    if(GLEW_FOUND)
+        message(STATUS "📦 Using system GLEW: ${GLEW_VERSION}")
+        target_link_libraries(camforge ${GLEW_LIBRARIES})
+        target_include_directories(camforge PRIVATE ${GLEW_INCLUDE_DIRS})
+    else
+        message(STATUS "📦 Using vendored GLEW")
+        target_link_directories(camforge PRIVATE "${THIRD_PARTY_DIR}/glew/lib")
+        target_link_libraries(camforge GLEW)
+    endif()
+
     target_link_libraries(camforge
         ${OpenCV_LIBS}
         ${OpenGL_LIBRARY}
         glfw
-        GLEW
         ${COCOA_LIBRARY}
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
     )
+
 else()
+    # Linux: Prefer system packages, fallback to vendored
     find_package(OpenGL REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    
+    # Try system GLEW first
+    pkg_check_modules(GLEW QUIET glew)
+    
+    if(GLEW_FOUND)
+        message(STATUS "📦 Using system GLEW: ${GLEW_VERSION}")
+        target_link_libraries(camforge ${GLEW_LIBRARIES})
+        target_include_directories(camforge PRIVATE ${GLEW_INCLUDE_DIRS})
+        target_compile_options(camforge PRIVATE ${GLEW_CFLAGS_OTHER})
+    else
+        message(STATUS "📦 Using vendored GLEW")
+        target_link_directories(camforge PRIVATE "${THIRD_PARTY_DIR}/glew/lib")
+        target_link_libraries(camforge GLEW)
+    endif()
+
+    # GLFW: Use vendored version
+    target_link_directories(camforge PRIVATE "${THIRD_PARTY_DIR}/glfw/build/src")
+    
     target_link_libraries(camforge
         ${OpenCV_LIBS}
         ${OPENGL_LIBRARIES}
-        glfw
-        GLEW
+        glfw3
         dl
         pthread
         X11

@@ -51,16 +51,35 @@ GLuint CreateShaderProgram(const std::string& vertPath, const std::string& fragP
 
 GLuint WatchAndReload(GLuint& program, const std::string& vsPath, const std::string& fsPath) {
     static auto lastWrite = fs::last_write_time(fsPath);
-    auto now = fs::last_write_time(fsPath);
-    if (now != lastWrite) {
-        lastWrite = now;
-        GLuint newProgram = CreateShaderProgram(vsPath, fsPath);
-        if (newProgram != 0) {
-            glDeleteProgram(program);
-            program = newProgram;
-            std::cout << "🔁 Shader hot-reloaded." << std::endl;
-        }
+    static auto lastCheck = std::chrono::steady_clock::now();
+    
+    auto now = std::chrono::steady_clock::now();
+    
+    // Only check filesystem every 100ms to avoid excessive I/O
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCheck).count() < 100) {
+        return program;
     }
+    lastCheck = now;
+    
+    try {
+        auto currentWrite = fs::last_write_time(fsPath);
+        if (currentWrite != lastWrite) {
+            lastWrite = currentWrite;
+            GLuint newProgram = CreateShaderProgram(vsPath, fsPath);
+            if (newProgram != 0) {
+                glDeleteProgram(program);
+                program = newProgram;
+                std::cout << "🔁 Shader hot-reloaded at " 
+                         << std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::system_clock::now().time_since_epoch()).count() 
+                         << "ms" << std::endl;
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        // Handle cases where file might be temporarily unavailable during writes
+        std::cerr << "⚠️ Filesystem error during shader check: " << e.what() << std::endl;
+    }
+    
     return program;
 }
 
@@ -121,22 +140,58 @@ int main() {
     GLuint program = CreateShaderProgram(vsPath, fsPath);
     glUseProgram(program);
 
-    // --- Main loop
+// Frame timing setup
+    const double targetFPS = 60.0;
+    const double frameTime = 1.0 / targetFPS;
+    auto lastFrameTime = std::chrono::high_resolution_clock::now();
+    
+    // Performance tracking
+    int frameCount = 0;
+    auto fpsTimer = std::chrono::high_resolution_clock::now();
+    
     while (!glfwWindowShouldClose(win)) {
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        double deltaTime = std::chrono::duration<double>(currentTime - lastFrameTime).count();
+        
+        // Frame limiting
+        if (deltaTime < frameTime) {
+            std::this_thread::sleep_for(
+                std::chrono::duration<double>(frameTime - deltaTime)
+            );
+            continue;
+        }
+        lastFrameTime = currentTime;
+        
         glfwPollEvents();
+        
+        // Throttled shader reloading
         program = WatchAndReload(program, vsPath, fsPath);
-
+        glUseProgram(program);
+        
+        // Camera frame processing
         cv::Mat frame;
         cap >> frame;
         if (frame.empty()) continue;
+        
         cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
-
+        
+        // Upload texture and render
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame.cols, frame.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, frame.data);
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glfwSwapBuffers(win);
-
+        
+        // Optional: Virtual webcam output
         pipeToVirtualWebcam(frame);
+        
+        // FPS tracking
+        frameCount++;
+        auto fpsElapsed = std::chrono::duration<double>(currentTime - fpsTimer).count();
+        if (fpsElapsed >= 1.0) {
+            std::cout << "📊 FPS: " << frameCount << std::endl;
+            frameCount = 0;
+            fpsTimer = currentTime;
+        }
     }
 
     return 0;
