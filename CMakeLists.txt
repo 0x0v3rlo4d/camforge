@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "🛠 Generator: ${CMAKE_GENERATOR}")
+message(STATUS "🖥️ System: ${CMAKE_SYSTEM_NAME}")
 
 # --- Config Paths ---
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
@@ -40,11 +41,6 @@ message(STATUS "🧩 Sources: ${SOURCES}")
 # --- Executable ---
 add_executable(camforge ${SOURCES} ${HEADERS})
 
-# --- GLFW Libs ---
-target_link_directories(camforge PRIVATE
-    "${THIRD_PARTY_DIR}/glfw/build/src/Release"
-)
-
 # --- Set output directories (multi-config safe) ---
 set_target_properties(camforge PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
@@ -53,9 +49,9 @@ set_target_properties(camforge PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/lib"
 )
 
-
 # --- Platform-specific setup with smart GLEW detection ---
-if (WIN32)
+if(WIN32)
+    message(STATUS "🪟 Configuring for Windows...")
     # Windows: Use vendored static libraries
     target_link_directories(camforge PRIVATE
         "${THIRD_PARTY_DIR}/glew/lib/Release/x64"
@@ -79,6 +75,7 @@ if (WIN32)
     )
 
 elseif(APPLE)
+    message(STATUS "🍎 Configuring for macOS...")
     # macOS: Use system frameworks + vendored libs
     find_library(COCOA_LIBRARY Cocoa REQUIRED)
     find_library(OpenGL_LIBRARY OpenGL REQUIRED)
@@ -95,7 +92,7 @@ elseif(APPLE)
         message(STATUS "📦 Using system GLEW: ${GLEW_VERSION}")
         target_link_libraries(camforge ${GLEW_LIBRARIES})
         target_include_directories(camforge PRIVATE ${GLEW_INCLUDE_DIRS})
-    else
+    else()
         message(STATUS "📦 Using vendored GLEW")
         target_link_directories(camforge PRIVATE "${THIRD_PARTY_DIR}/glew/lib")
         target_link_libraries(camforge GLEW)
@@ -111,6 +108,7 @@ elseif(APPLE)
     )
 
 else()
+    message(STATUS "🐧 Configuring for Linux...")
     # Linux: Prefer system packages, fallback to vendored
     find_package(OpenGL REQUIRED)
     find_package(PkgConfig REQUIRED)
@@ -123,7 +121,7 @@ else()
         target_link_libraries(camforge ${GLEW_LIBRARIES})
         target_include_directories(camforge PRIVATE ${GLEW_INCLUDE_DIRS})
         target_compile_options(camforge PRIVATE ${GLEW_CFLAGS_OTHER})
-    else
+    else()
         message(STATUS "📦 Using vendored GLEW")
         target_link_directories(camforge PRIVATE "${THIRD_PARTY_DIR}/glew/lib")
         target_link_libraries(camforge GLEW)
