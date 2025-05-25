@@ -40,13 +40,16 @@ message(STATUS "🧩 Sources: ${SOURCES}")
 # --- Executable ---
 add_executable(camforge ${SOURCES} ${HEADERS})
 
+# --- GLFW Libs ---
+target_link_directories(camforge PRIVATE
+    "${THIRD_PARTY_DIR}/glfw/build/src/Release"
+)
+
 # --- Set output directories (multi-config safe) ---
 set_target_properties(camforge PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
-    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib"
-    ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/lib"
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/archive"
     LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/lib"
 )
 

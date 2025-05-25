@@ -76,4 +76,56 @@ if (-not (Test-Path "$opencvBuildPath\install")) {
     Write-Host "✅ OpenCV already built, skipping."
 }
 
+# --- BUILD GLFW ---    
+if (-not (Test-Path "$thirdPartyPath\glfw\build\src\Release\glfw3.lib")) {
+    Write-Host "`n🔨 Building GLFW..."
+
+    $glfwBuildPath = Join-Path $thirdPartyPath "glfw\build"
+    New-Item -ItemType Directory -Force -Path $glfwBuildPath | Out-Null
+    Push-Location $glfwBuildPath
+
+    cmake .. -G "Visual Studio 17 2022" -A x64
+    cmake --build . --config Release
+
+    Pop-Location
+} else {
+    Write-Host "✅ GLFW already built, skipping."
+}
+
+
+# --- BUILD GLEW ---
+$glewLibPath = Join-Path $glewFinalPath "lib\Release\x64\glew32.lib"
+
+if (-not (Test-Path $glewLibPath)) {
+    Write-Host "`n🔨 Building GLEW..."
+
+    $glewSourcePath = Join-Path $glewFinalPath "build/cmake"
+    $glewBuildPath = Join-Path $glewFinalPath "build_vs2022"
+
+    New-Item -ItemType Directory -Force -Path $glewBuildPath | Out-Null
+    Push-Location $glewBuildPath
+
+    # Configure GLEW with CMake
+    cmake $glewSourcePath -G "Visual Studio 17 2022" -A x64 `
+        -DCMAKE_INSTALL_PREFIX="$glewFinalPath" `
+        -DCMAKE_BUILD_TYPE=Release `
+        -DBUILD_SHARED_LIBS=OFF `
+        -DBUILD_UTILS=OFF
+
+    # Build static lib
+    cmake --build . --config Release
+
+    # Install static lib + headers to predictable layout
+    cmake --install . --config Release
+
+    Pop-Location
+
+    Write-Host "✅ GLEW build and install complete!"
+} else {
+    Write-Host "✅ GLEW already built, skipping."
+}
+
+
+
+
 Write-Host "`n🚀 All dependencies ready!"
